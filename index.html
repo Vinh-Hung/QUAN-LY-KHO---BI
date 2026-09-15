@@ -357,11 +357,15 @@ function switchTab(name) {
 // ── Nhập kho ─────────────────────────────────────────────────────────────
 function onInFile(file) {
   if (!file) return;
-  toB64(file).then(d => {
+  document.getElementById("in-dropzone").classList.remove("input-error");
+  document.getElementById("in-preview").innerHTML = '<div style="font-size:12px;color:#888;padding:6px 0;">⏳ Đang nén ảnh...</div>';
+  resizeImage(file, 900, 0.7).then(d => {
     inImageData = d;
-    document.getElementById("in-dropzone").classList.remove("input-error");
     document.getElementById("in-preview").innerHTML =
       '<div class="prev-wrap"><img src="' + d + '"><button class="prev-rm" onclick="inImageData=\'\';document.getElementById(\'in-preview\').innerHTML=\'\'">✕</button></div>';
+  }).catch(e => {
+    document.getElementById("in-preview").innerHTML = "";
+    showToast("Lỗi xử lý ảnh: " + e.message, "error");
   });
 }
 
@@ -482,10 +486,14 @@ function closeImgLightbox() { document.getElementById("img-lightbox").classList.
 
 function onEmFile(file) {
   if (!file) return;
-  toB64(file).then(d => {
+  document.getElementById("em-preview").innerHTML = '<div style="font-size:12px;color:#888;padding:6px 0;">⏳ Đang nén ảnh...</div>';
+  resizeImage(file, 900, 0.7).then(d => {
     emImageData = d;
     document.getElementById("em-preview").innerHTML =
       '<div class="prev-wrap"><img src="' + d + '"><button class="prev-rm" onclick="emImageData=\'\';document.getElementById(\'em-preview\').innerHTML=\'\'">✕</button></div>';
+  }).catch(e => {
+    document.getElementById("em-preview").innerHTML = "";
+    showToast("Lỗi xử lý ảnh: " + e.message, "error");
   });
 }
 
@@ -609,6 +617,36 @@ function fmtVnd(n) { return Math.round(n || 0).toLocaleString("vi-VN") + " đ"; 
 function esc(s) { return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function toB64(file) {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+
+// Nén + resize ảnh bằng canvas trước khi lưu (cùng cách làm với app case
+// tracker QC — đã chạy tốt thực tế): resize theo chiều rộng tối đa, ép chất
+// lượng JPEG cố định. Thêm 1 bước dự phòng nếu ảnh vẫn còn nặng, vì mỗi ô
+// Google Sheets giới hạn 50.000 ký tự (trường hợp này hiếm khi xảy ra).
+function resizeImage(file, maxW, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => { img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      let dataUrl = canvas.toDataURL("image/jpeg", quality);
+      if (dataUrl.length > 45000) dataUrl = canvas.toDataURL("image/jpeg", 0.4);
+      if (dataUrl.length > 45000) {
+        const c2 = document.createElement("canvas");
+        c2.width = canvas.width * 0.7; c2.height = canvas.height * 0.7;
+        c2.getContext("2d").drawImage(canvas, 0, 0, c2.width, c2.height);
+        dataUrl = c2.toDataURL("image/jpeg", 0.5);
+      }
+      resolve(dataUrl);
+    }; img.onerror = () => reject(new Error("File không phải ảnh hợp lệ")); img.src = e.target.result; };
+    reader.onerror = () => reject(new Error("Không đọc được file"));
+    reader.readAsDataURL(file);
+  });
 }
 function showToast(msg, type) {
   clearTimeout(toastTimer);
