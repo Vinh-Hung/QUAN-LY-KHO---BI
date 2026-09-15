@@ -43,6 +43,8 @@ table.tbl td { padding: 8px; border-bottom: 1px solid #f2f2f2; vertical-align: m
 table.tbl tr.clickable { cursor: pointer; }
 table.tbl tr.clickable:hover { background: #f9fafb; }
 .thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; }
+.thumb-ph { width: 36px; height: 36px; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.hint { font-size: 11px; color: #aaa; margin: -8px 0 12px; }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
 .badge-gray  { background: #f0f0f0; color: #666; }
 .badge-green { background: #E1F5EE; color: #0F6E56; }
@@ -173,10 +175,11 @@ a { color: #1D9E75; }
     <div class="card">
       <div class="g-title">🔍 Tìm trong kho tồn</div>
       <div class="filter-row">
-        <div><label class="lbl">Tên linh kiện</label><input id="x-name" type="text" placeholder="Nhập tên để tìm..."></div>
+        <div><label class="lbl">Tên linh kiện</label><input id="x-name" type="text" placeholder="Nhập tên để tìm..." onkeydown="if(event.key==='Enter')doSearch()"></div>
         <div><label class="lbl">Vị trí kho</label><select id="x-location"><option value="">Tất cả</option></select></div>
         <button class="btn-primary" style="width:auto;padding:9px 18px;margin-top:auto;" onclick="doSearch()">Tìm kiếm</button>
       </div>
+      <div class="hint">Tìm kiếm tương đối — không cần gõ dấu hoặc đúng hoa/thường (VD: "kim" cũng tìm ra "Kìm")</div>
       <div id="x-results"><div class="empty"><span class="empty-icon">🔍</span>Nhập từ khoá hoặc chọn kho rồi bấm Tìm kiếm</div></div>
     </div>
 
@@ -300,17 +303,32 @@ function showApp() {
 }
 
 // ── API helpers (GET for reads, POST text/plain for writes — avoids CORS preflight) ──
+// Timeout 20s: tránh treo vô thời hạn trên mạng chậm, báo lỗi tiếng Việt rõ ràng.
 async function apiGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(API_URL + "?" + qs, { redirect: "follow", cache: "no-store" });
-  return res.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(API_URL + "?" + qs, { redirect: "follow", cache: "no-store", signal: ctrl.signal });
+    return await res.json();
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Kết nối quá chậm (>20s), vui lòng thử lại");
+    throw new Error("Không kết nối được tới máy chủ — kiểm tra lại URL Apps Script");
+  } finally { clearTimeout(timer); }
 }
 async function apiPost(body) {
-  const res = await fetch(API_URL, {
-    method: "POST", redirect: "follow", cache: "no-store",
-    headers: { "Content-Type": "text/plain" }, body: JSON.stringify(body)
-  });
-  return res.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST", redirect: "follow", cache: "no-store", signal: ctrl.signal,
+      headers: { "Content-Type": "text/plain" }, body: JSON.stringify(body)
+    });
+    return await res.json();
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Kết nối quá chậm (>20s), vui lòng thử lại");
+    throw new Error("Không kết nối được tới máy chủ — kiểm tra lại URL Apps Script");
+  } finally { clearTimeout(timer); }
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────
@@ -391,7 +409,7 @@ function renderResults(items) {
   items.forEach((it, i) => {
     const low = it.quantity < it.minStock;
     html += '<tr class="clickable" onclick=\'openExportModal(' + i + ')\'>' +
-      '<td>' + (it.image ? '<img class="thumb" src="'+it.image+'">' : '<div class="thumb"></div>') + '</td>' +
+      '<td><div class="thumb-ph">📦</div></td>' +
       '<td>' + esc(it.itemName) + '</td>' +
       '<td>' + esc(it.model) + '</td>' +
       '<td>' + it.quantity + (low ? ' <span class="badge badge-red">Thấp</span>' : '') + '</td>' +
