@@ -200,10 +200,14 @@ a { color: #1D9E75; }
   <!-- TAB: BÁO CÁO TỒN KHO -->
   <div id="tab-baocao" style="display:none;">
     <div class="card">
-      <div class="g-title">📊 Tổng quan giá trị tồn kho <span style="font-size:12px;color:#888;font-weight:400;" id="r-month"></span></div>
+      <div class="g-title">📊 Tổng quan giá trị tồn kho</div>
+      <div class="field" style="max-width:220px;">
+        <label class="lbl">Tháng báo cáo</label>
+        <input type="month" id="r-month-input" onchange="loadReport()">
+      </div>
       <div class="stats">
         <div class="stat"><div class="stat-n" id="r-opening">—</div><div class="stat-l">Giá trị tồn đầu kỳ</div></div>
-        <div class="stat"><div class="stat-n" id="r-current">—</div><div class="stat-l">Giá trị tồn hiện tại</div></div>
+        <div class="stat"><div class="stat-n" id="r-current">—</div><div class="stat-l" id="r-current-label">Giá trị tồn hiện tại</div></div>
         <div class="stat"><div class="stat-n" id="r-in">—</div><div class="stat-l">Tổng giá trị nhập (tháng)</div></div>
         <div class="stat"><div class="stat-n" id="r-out">—</div><div class="stat-l">Tổng giá trị xuất (tháng)</div></div>
       </div>
@@ -289,6 +293,7 @@ window.onload = function() {
   fillSelect("x-location", LOCATIONS, true);
   document.getElementById("in-date").value = today();
   document.getElementById("em-dateout").value = today();
+  document.getElementById("r-month-input").value = today().slice(0, 7);
   if (saved) { API_URL = saved; showApp(); } else { document.getElementById("setup-screen").style.display = "block"; }
 };
 
@@ -578,12 +583,13 @@ async function returnLoan(txnId) {
 
 // ── Báo cáo tồn kho ──────────────────────────────────────────────────────
 async function loadReport() {
+  const month = document.getElementById("r-month-input").value || today().slice(0, 7);
   document.getElementById("r-lowstock").innerHTML = '<div class="loading"><div class="spinner"></div>Đang tải...</div>';
   document.getElementById("r-overdue").innerHTML = '<div class="loading"><div class="spinner"></div>Đang tải...</div>';
   try {
-    const r = await apiGet({ action: "getReport" });
+    const r = await apiGet({ action: "getReport", month: month });
     if (!r.ok) { showToast("Lỗi tải báo cáo: " + r.error, "error"); return; }
-    document.getElementById("r-month").textContent = "· Tháng " + r.month;
+    document.getElementById("r-current-label").textContent = r.isCurrentMonth ? "Giá trị tồn hiện tại" : "Giá trị tồn cuối kỳ";
     document.getElementById("r-opening").textContent = fmtVnd(r.openingValue);
     document.getElementById("r-current").textContent = fmtVnd(r.currentValue);
     document.getElementById("r-in").textContent = fmtVnd(r.monthlyInValue);
