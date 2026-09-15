@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý Xuất Nhập Tồn Kho</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f4; color: #111; min-height: 100vh; }
+.shell { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+input, select { width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #111; outline: none; font-family: inherit; transition: border-color 0.15s; }
+input:focus, select:focus { border-color: #1D9E75; }
+button { font-family: inherit; cursor: pointer; }
+.card  { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+.muted { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.tabs { display: flex; border-bottom: 1px solid #e8e8e8; margin-bottom: 24px; overflow-x: auto; }
+.tab  { padding: 10px 18px; font-size: 14px; font-weight: 500; color: #888; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap; }
+.tab.active { color: #111; border-bottom-color: #111; }
+.btn-primary { background: #111; color: #fff; border: none; border-radius: 8px; padding: 11px 20px; font-size: 14px; font-weight: 500; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary:not(:disabled):hover { opacity: 0.85; }
+.btn-sm { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 7px 13px; font-size: 13px; color: #111; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn-sm:hover { background: #f5f5f5; }
+.dropzone { border: 2px dashed #ddd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; color: #999; font-size: 13px; transition: background 0.15s, border-color 0.15s; }
+.dropzone:hover, .dropzone.over { background: #f0faf6; border-color: #1D9E75; }
+.drop-icon { font-size: 30px; display: block; margin-bottom: 6px; }
+.prev-wrap { margin-top: 10px; position: relative; width: 90px; }
+.prev-wrap img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #e8e8e8; }
+.prev-rm { position: absolute; top: -6px; right: -6px; background: rgba(0,0,0,.65); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 13px; cursor: pointer; }
+.stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: #f5f5f5; border-radius: 8px; padding: 14px 16px; }
+.stat-n { font-size: 20px; font-weight: 600; }
+.stat-l { font-size: 12px; color: #888; margin-top: 2px; }
+.filter-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 14px; }
+.lbl { font-size: 12px; color: #666; display: block; margin-bottom: 6px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.field { margin-bottom: 12px; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.tbl th { text-align: left; color: #888; font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid #eee; }
+table.tbl td { padding: 8px; border-bottom: 1px solid #f2f2f2; vertical-align: middle; }
+table.tbl tr.clickable { cursor: pointer; }
+table.tbl tr.clickable:hover { background: #f9fafb; }
+.thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
+.badge-gray  { background: #f0f0f0; color: #666; }
+.badge-green { background: #E1F5EE; color: #0F6E56; }
+.badge-red   { background: #FCEBEB; color: #A32D2D; }
+.badge-amber { background: #FDF1DC; color: #92620B; }
+.g-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 999; padding: 16px; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 22px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: #888; margin-bottom: 16px; }
+.modal-close { float: right; background: none; border: none; font-size: 18px; color: #999; cursor: pointer; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 11px 16px; font-size: 13px; max-width: 320px; z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,.1); transition: transform .2s, opacity .2s; }
+.toast.hide { transform: translateY(60px); opacity: 0; pointer-events: none; }
+.toast.success { border-left: 3px solid #1D9E75; }
+.toast.error   { border-left: 3px solid #E24B4A; }
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; gap: 12px; color: #888; font-size: 14px; }
+.spinner { width: 26px; height: 26px; border: 2px solid #eee; border-top-color: #1D9E75; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 36px 16px; color: #bbb; font-size: 14px; }
+.empty-icon { font-size: 34px; display: block; margin-bottom: 8px; }
+.setup-wrap { max-width: 520px; margin: 60px auto; }
+.setup-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 28px; }
+.setup-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.setup-sub { font-size: 13px; color: #888; margin-bottom: 24px; line-height: 1.7; }
+.step { display: flex; gap: 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.7; color: #444; }
+.step-num { flex-shrink: 0; width: 22px; height: 22px; background: #111; color: #fff; border-radius: 50%; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+code { background: #f5f5f5; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+a { color: #1D9E75; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.header-title { font-size: 20px; font-weight: 600; }
+.header-sub { font-size: 12px; color: #888; margin-top: 3px; }
+.header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.section-title { font-size: 13px; font-weight: 600; color: #666; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: .3px; }
+@media (max-width: 560px) {
+  .row2, .row3 { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .filter-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup-screen" class="shell" style="display:none;">
+  <div class="setup-wrap">
+    <div class="setup-card">
+      <div class="setup-title">⚙️ Cài đặt kết nối</div>
+      <div class="setup-sub">Nhập URL Google Apps Script Web App để kết nối với Google Sheets lưu dữ liệu kho.</div>
+      <div class="step"><div class="step-num">1</div><div>Mở <a href="https://script.google.com" target="_blank">script.google.com</a> → tạo project mới (gắn với 1 Google Sheet trống)</div></div>
+      <div class="step"><div class="step-num">2</div><div>Dán nội dung file <code>Code.gs</code> vào → Save</div></div>
+      <div class="step"><div class="step-num">3</div><div><strong>Deploy → New deployment → Web App</strong><br>Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong></div></div>
+      <div class="step"><div class="step-num">4</div><div>Copy URL <code>.../exec</code> và dán bên dưới</div></div>
+      <label class="lbl" style="margin-top:20px;">URL Google Apps Script Web App</label>
+      <input id="url-input" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom:12px;" />
+      <button class="btn-primary" onclick="saveUrl()">Kết nối</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="shell" style="display:none;">
+  <div class="header">
+    <div>
+      <div class="header-title">📦 Quản lý Xuất Nhập Tồn Kho</div>
+      <div class="header-sub" id="hdr-sub">—</div>
+    </div>
+    <div class="header-btns">
+      <button class="btn-sm" onclick="resetUrl()">⚙ Đổi kết nối</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="nhap" onclick="switchTab('nhap')">Nhập kho</button>
+    <button class="tab" data-tab="xuat" onclick="switchTab('xuat')">Xuất kho / Cho mượn</button>
+    <button class="tab" data-tab="baocao" onclick="switchTab('baocao')">Báo cáo tồn kho</button>
+  </div>
+
+  <!-- TAB: NHẬP KHO -->
+  <div id="tab-nhap">
+    <div class="card">
+      <div class="g-title">➕ Nhập kho mới</div>
+      <div class="field">
+        <label class="lbl">Ảnh linh kiện</label>
+        <div class="dropzone" id="in-dropzone" onclick="document.getElementById('in-file').click()">
+          <span class="drop-icon">📷</span>Bấm để chọn ảnh
+        </div>
+        <input type="file" id="in-file" accept="image/*" style="display:none" onchange="onInFile(this.files[0])">
+        <div id="in-preview"></div>
+      </div>
+      <div class="row2">
+        <div><label class="lbl">Tên linh kiện *</label><input id="in-name" type="text" placeholder="VD: Ốc vít M4"></div>
+        <div><label class="lbl">Model</label><input id="in-model" type="text" placeholder="VD: SUS304-M4x10"></div>
+      </div>
+      <div class="row3">
+        <div><label class="lbl">Số lượng *</label><input id="in-qty" type="number" min="0" placeholder="0"></div>
+        <div><label class="lbl">Loại linh kiện</label>
+          <select id="in-category"></select>
+        </div>
+        <div><label class="lbl">Giá (VNĐ)</label><input id="in-price" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="row2">
+        <div><label class="lbl">Ngày nhập</label><input id="in-date" type="date"></div>
+        <div><label class="lbl">Người nhập kho</label><input id="in-person" type="text" placeholder="Tên người nhập"></div>
+      </div>
+      <div class="row2">
+        <div><label class="lbl">Vị trí kho</label>
+          <select id="in-location"></select>
+        </div>
+        <div><label class="lbl">Tình trạng</label>
+          <select id="in-status"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl">Số lượng tồn kho tối thiểu</label>
+        <input id="in-minstock" type="number" min="0" placeholder="0">
+      </div>
+      <button class="btn-primary" id="in-submit" onclick="submitIn()">💾 Lưu vào kho</button>
+    </div>
+  </div>
+
+  <!-- TAB: XUẤT KHO / CHO MƯỢN -->
+  <div id="tab-xuat" style="display:none;">
+    <div class="card">
+      <div class="g-title">🔍 Tìm trong kho tồn</div>
+      <div class="filter-row">
+        <div><label class="lbl">Tên linh kiện</label><input id="x-name" type="text" placeholder="Nhập tên để tìm..."></div>
+        <div><label class="lbl">Vị trí kho</label><select id="x-location"><option value="">Tất cả</option></select></div>
+        <button class="btn-primary" style="width:auto;padding:9px 18px;margin-top:auto;" onclick="doSearch()">Tìm kiếm</button>
+      </div>
+      <div id="x-results"><div class="empty"><span class="empty-icon">🔍</span>Nhập từ khoá hoặc chọn kho rồi bấm Tìm kiếm</div></div>
+    </div>
+
+    <div class="card">
+      <div class="g-title">📤 Đang cho mượn (chưa trả)</div>
+      <div id="x-loans"><div class="empty">Đang tải...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB: BÁO CÁO TỒN KHO -->
+  <div id="tab-baocao" style="display:none;">
+    <div class="card">
+      <div class="g-title">📊 Tổng quan giá trị tồn kho <span style="font-size:12px;color:#888;font-weight:400;" id="r-month"></span></div>
+      <div class="stats">
+        <div class="stat"><div class="stat-n" id="r-opening">—</div><div class="stat-l">Giá trị tồn đầu kỳ</div></div>
+        <div class="stat"><div class="stat-n" id="r-current">—</div><div class="stat-l">Giá trị tồn hiện tại</div></div>
+        <div class="stat"><div class="stat-n" id="r-in">—</div><div class="stat-l">Tổng giá trị nhập (tháng)</div></div>
+        <div class="stat"><div class="stat-n" id="r-out">—</div><div class="stat-l">Tổng giá trị xuất (tháng)</div></div>
+      </div>
+      <button class="btn-sm" onclick="loadReport()">↻ Làm mới báo cáo</button>
+    </div>
+
+    <div class="card">
+      <div class="g-title">🏬 Tồn kho theo từng vị trí</div>
+      <table class="tbl" id="r-location-tbl"><thead><tr><th>Vị trí kho</th><th>Số lượng</th><th>Giá trị</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <div class="g-title">⚠️ Cảnh báo tồn kho thấp hơn mức tối thiểu</div>
+      <div id="r-lowstock"><div class="empty">Đang tải...</div></div>
+    </div>
+
+    <div class="card">
+      <div class="g-title">⏰ Cảnh báo mượn quá hạn trả</div>
+      <div id="r-overdue"><div class="empty">Đang tải...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: XUẤT / CHO MƯỢN -->
+<div class="modal-bg" id="export-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeExportModal()">✕</button>
+    <div class="modal-title" id="em-title">Xuất kho / Cho mượn</div>
+    <div class="modal-sub" id="em-sub"></div>
+    <div class="field">
+      <label class="lbl">Loại giao dịch</label>
+      <select id="em-type"><option>Xuất kho</option><option>Cho mượn</option></select>
+    </div>
+    <div class="field">
+      <label class="lbl">Số lượng xuất *</label>
+      <input id="em-qty" type="number" min="1">
+    </div>
+    <div class="row2">
+      <div><label class="lbl">Người xuất</label><input id="em-personout" type="text"></div>
+      <div><label class="lbl">Người nhận</label><input id="em-personrecv" type="text"></div>
+    </div>
+    <div class="row2">
+      <div><label class="lbl">Ngày xuất</label><input id="em-dateout" type="date"></div>
+      <div><label class="lbl">Hẹn ngày trả</label><input id="em-duedate" type="date"></div>
+    </div>
+    <div class="field">
+      <label class="lbl">Hình ảnh</label>
+      <div class="dropzone" id="em-dropzone" onclick="document.getElementById('em-file').click()">
+        <span class="drop-icon">📷</span>Bấm để chọn ảnh
+      </div>
+      <input type="file" id="em-file" accept="image/*" style="display:none" onchange="onEmFile(this.files[0])">
+      <div id="em-preview"></div>
+    </div>
+    <button class="btn-primary" id="em-submit" onclick="submitExport()">✅ Xác nhận xuất kho</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hide"></div>
+
+<script>
+const LS_KEY = "invapp_gas_url_v1";
+const LOCATIONS = ["Thành Chí", "Thiên Ân", "Anh Nhàn", "Chí Việt", "Nhà riêng"];
+const CATEGORIES = ["Dụng cụ", "Máy móc", "Linh kiện", "Loại khác"];
+const STATUSES = ["Còn sử dụng được", "Hư hỏng"];
+let API_URL = "";
+let toastTimer;
+let inImageData = "";
+let emImageData = "";
+let selectedItem = null;
+
+// ── Setup / boot ─────────────────────────────────────────────────────────
+window.onload = function() {
+  const saved = localStorage.getItem(LS_KEY);
+  fillSelect("in-category", CATEGORIES);
+  fillSelect("in-location", LOCATIONS);
+  fillSelect("in-status", STATUSES);
+  fillSelect("x-location", LOCATIONS, true);
+  document.getElementById("in-date").value = today();
+  document.getElementById("em-dateout").value = today();
+  if (saved) { API_URL = saved; showApp(); } else { document.getElementById("setup-screen").style.display = "block"; }
+};
+
+function fillSelect(id, arr, keepFirst) {
+  const el = document.getElementById(id);
+  arr.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; el.appendChild(o); });
+}
+
+function saveUrl() {
+  const v = document.getElementById("url-input").value.trim();
+  if (!v) { showToast("Vui lòng nhập URL", "error"); return; }
+  localStorage.setItem(LS_KEY, v);
+  API_URL = v;
+  showApp();
+}
+function resetUrl() {
+  if (!confirm("Đổi kết nối tới Google Sheets khác?")) return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
+}
+function showApp() {
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("app-screen").style.display = "block";
+  document.getElementById("hdr-sub").textContent = "Đã kết nối · " + today();
+  loadLoans();
+}
+
+// ── API helpers (GET for reads, POST text/plain for writes — avoids CORS preflight) ──
+async function apiGet(params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(API_URL + "?" + qs, { redirect: "follow", cache: "no-store" });
+  return res.json();
+}
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: "POST", redirect: "follow", cache: "no-store",
+    headers: { "Content-Type": "text/plain" }, body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ["nhap","xuat","baocao"].forEach(t => {
+    document.getElementById("tab-" + t).style.display = t === name ? "block" : "none";
+    document.querySelector('.tab[data-tab="' + t + '"]').classList.toggle("active", t === name);
+  });
+  if (name === "baocao") loadReport();
+}
+
+// ── Nhập kho ─────────────────────────────────────────────────────────────
+function onInFile(file) {
+  if (!file) return;
+  toB64(file).then(d => {
+    inImageData = d;
+    document.getElementById("in-preview").innerHTML =
+      '<div class="prev-wrap"><img src="' + d + '"><button class="prev-rm" onclick="inImageData=\'\';document.getElementById(\'in-preview\').innerHTML=\'\'">✕</button></div>';
+  });
+}
+
+async function submitIn() {
+  const name = document.getElementById("in-name").value.trim();
+  const qty = document.getElementById("in-qty").value;
+  if (!name) { showToast("Vui lòng nhập tên linh kiện", "error"); return; }
+  if (qty === "" || Number(qty) < 0) { showToast("Vui lòng nhập số lượng hợp lệ", "error"); return; }
+
+  const btn = document.getElementById("in-submit");
+  btn.disabled = true; btn.textContent = "Đang lưu...";
+  try {
+    const r = await apiPost({
+      action: "addItem",
+      image: inImageData,
+      itemName: name,
+      quantity: qty,
+      model: document.getElementById("in-model").value.trim(),
+      category: document.getElementById("in-category").value,
+      price: document.getElementById("in-price").value || 0,
+      dateIn: document.getElementById("in-date").value,
+      personIn: document.getElementById("in-person").value.trim(),
+      location: document.getElementById("in-location").value,
+      status: document.getElementById("in-status").value,
+      minStock: document.getElementById("in-minstock").value || 0
+    });
+    if (r.ok) {
+      showToast("✅ Đã nhập kho: " + name);
+      document.getElementById("in-name").value = "";
+      document.getElementById("in-model").value = "";
+      document.getElementById("in-qty").value = "";
+      document.getElementById("in-price").value = "";
+      document.getElementById("in-person").value = "";
+      document.getElementById("in-minstock").value = "";
+      inImageData = ""; document.getElementById("in-preview").innerHTML = "";
+    } else {
+      showToast("Lỗi: " + (r.error || "không xác định"), "error");
+    }
+  } catch (e) { showToast("Lỗi kết nối: " + e.message, "error"); }
+  btn.disabled = false; btn.textContent = "💾 Lưu vào kho";
+}
+
+// ── Tìm kiếm / Xuất kho ─────────────────────────────────────────────────
+async function doSearch() {
+  const name = document.getElementById("x-name").value.trim();
+  const location = document.getElementById("x-location").value;
+  const box = document.getElementById("x-results");
+  box.innerHTML = '<div class="loading"><div class="spinner"></div>Đang tìm...</div>';
+  try {
+    const r = await apiGet({ action: "search", name: name, location: location });
+    if (!r.ok) { box.innerHTML = '<div class="empty"><span class="empty-icon">⚠️</span>' + (r.error||"Lỗi") + '</div>'; return; }
+    renderResults(r.items || []);
+  } catch (e) { box.innerHTML = '<div class="empty"><span class="empty-icon">⚠️</span>Lỗi kết nối: ' + e.message + '</div>'; }
+}
+
+function renderResults(items) {
+  const box = document.getElementById("x-results");
+  if (!items.length) { box.innerHTML = '<div class="empty"><span class="empty-icon">📭</span>Không tìm thấy linh kiện nào</div>'; return; }
+  let html = '<table class="tbl"><thead><tr><th></th><th>Tên</th><th>Model</th><th>SL tồn</th><th>Kho</th><th>Tình trạng</th></tr></thead><tbody>';
+  items.forEach((it, i) => {
+    const low = it.quantity < it.minStock;
+    html += '<tr class="clickable" onclick=\'openExportModal(' + i + ')\'>' +
+      '<td>' + (it.image ? '<img class="thumb" src="'+it.image+'">' : '<div class="thumb"></div>') + '</td>' +
+      '<td>' + esc(it.itemName) + '</td>' +
+      '<td>' + esc(it.model) + '</td>' +
+      '<td>' + it.quantity + (low ? ' <span class="badge badge-red">Thấp</span>' : '') + '</td>' +
+      '<td>' + esc(it.location) + '</td>' +
+      '<td><span class="badge ' + (it.status === "Hư hỏng" ? "badge-red" : "badge-green") + '">' + esc(it.status) + '</span></td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+  window._searchResults = items;
+}
+
+function openExportModal(i) {
+  selectedItem = window._searchResults[i];
+  document.getElementById("em-title").textContent = "Xuất / Cho mượn: " + selectedItem.itemName;
+  document.getElementById("em-sub").textContent = "Tồn hiện tại: " + selectedItem.quantity + " · Kho: " + selectedItem.location;
+  document.getElementById("em-qty").value = "";
+  document.getElementById("em-qty").max = selectedItem.quantity;
+  document.getElementById("em-personout").value = "";
+  document.getElementById("em-personrecv").value = "";
+  document.getElementById("em-dateout").value = today();
+  document.getElementById("em-duedate").value = "";
+  emImageData = ""; document.getElementById("em-preview").innerHTML = "";
+  document.getElementById("export-modal").classList.add("open");
+}
+function closeExportModal() { document.getElementById("export-modal").classList.remove("open"); }
+
+function onEmFile(file) {
+  if (!file) return;
+  toB64(file).then(d => {
+    emImageData = d;
+    document.getElementById("em-preview").innerHTML =
+      '<div class="prev-wrap"><img src="' + d + '"><button class="prev-rm" onclick="emImageData=\'\';document.getElementById(\'em-preview\').innerHTML=\'\'">✕</button></div>';
+  });
+}
+
+async function submitExport() {
+  if (!selectedItem) return;
+  const qty = document.getElementById("em-qty").value;
+  if (!qty || Number(qty) <= 0) { showToast("Vui lòng nhập số lượng xuất", "error"); return; }
+  if (Number(qty) > selectedItem.quantity) { showToast("Số lượng vượt quá tồn kho hiện có", "error"); return; }
+
+  const btn = document.getElementById("em-submit");
+  btn.disabled = true; btn.textContent = "Đang xử lý...";
+  try {
+    const r = await apiPost({
+      action: "exportItem",
+      itemId: selectedItem.id,
+      quantity: qty,
+      type: document.getElementById("em-type").value,
+      personOut: document.getElementById("em-personout").value.trim(),
+      personReceive: document.getElementById("em-personrecv").value.trim(),
+      image: emImageData,
+      dateOut: document.getElementById("em-dateout").value,
+      dueDate: document.getElementById("em-duedate").value
+    });
+    if (r.ok) {
+      showToast("✅ Đã xuất kho: " + selectedItem.itemName);
+      closeExportModal();
+      doSearch();
+      loadLoans();
+    } else {
+      showToast("Lỗi: " + (r.error || "không xác định"), "error");
+    }
+  } catch (e) { showToast("Lỗi kết nối: " + e.message, "error"); }
+  btn.disabled = false; btn.textContent = "✅ Xác nhận xuất kho";
+}
+
+async function loadLoans() {
+  const box = document.getElementById("x-loans");
+  box.innerHTML = '<div class="loading"><div class="spinner"></div>Đang tải...</div>';
+  try {
+    const r = await apiGet({ action: "getTxns", status: "Đang mượn" });
+    if (!r.ok) { box.innerHTML = '<div class="empty">Lỗi tải dữ liệu</div>'; return; }
+    renderLoans(r.txns || []);
+  } catch (e) { box.innerHTML = '<div class="empty">Lỗi kết nối</div>'; }
+}
+
+function renderLoans(txns) {
+  const box = document.getElementById("x-loans");
+  if (!txns.length) { box.innerHTML = '<div class="empty"><span class="empty-icon">✅</span>Không có phiếu mượn nào chưa trả</div>'; return; }
+  const todayStr = today();
+  let html = '<table class="tbl"><thead><tr><th>Linh kiện</th><th>SL</th><th>Người mượn</th><th>Hẹn trả</th><th></th></tr></thead><tbody>';
+  txns.forEach(t => {
+    const overdue = t.dueDate && t.dueDate < todayStr;
+    html += '<tr>' +
+      '<td>' + esc(t.itemName) + '</td>' +
+      '<td>' + t.quantity + '</td>' +
+      '<td>' + esc(t.personReceive) + '</td>' +
+      '<td>' + (t.dueDate ? esc(t.dueDate) : '—') + (overdue ? ' <span class="badge badge-red">Quá hạn</span>' : '') + '</td>' +
+      '<td><button class="btn-sm" onclick=\'returnLoan("' + t.id + '")\'>↩ Nhận lại</button></td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+async function returnLoan(txnId) {
+  if (!confirm("Xác nhận đã nhận lại hàng và cộng lại vào tồn kho?")) return;
+  try {
+    const r = await apiPost({ action: "returnItem", txnId: txnId });
+    if (r.ok) { showToast("✅ Đã nhận lại hàng"); loadLoans(); }
+    else showToast("Lỗi: " + (r.error || "không xác định"), "error");
+  } catch (e) { showToast("Lỗi kết nối: " + e.message, "error"); }
+}
+
+// ── Báo cáo tồn kho ──────────────────────────────────────────────────────
+async function loadReport() {
+  document.getElementById("r-lowstock").innerHTML = '<div class="loading"><div class="spinner"></div>Đang tải...</div>';
+  document.getElementById("r-overdue").innerHTML = '<div class="loading"><div class="spinner"></div>Đang tải...</div>';
+  try {
+    const r = await apiGet({ action: "getReport" });
+    if (!r.ok) { showToast("Lỗi tải báo cáo: " + r.error, "error"); return; }
+    document.getElementById("r-month").textContent = "· Tháng " + r.month;
+    document.getElementById("r-opening").textContent = fmtVnd(r.openingValue);
+    document.getElementById("r-current").textContent = fmtVnd(r.currentValue);
+    document.getElementById("r-in").textContent = fmtVnd(r.monthlyInValue);
+    document.getElementById("r-out").textContent = fmtVnd(r.monthlyOutValue);
+
+    const tbody = document.querySelector("#r-location-tbl tbody");
+    tbody.innerHTML = Object.keys(r.byLocation).map(loc => {
+      const d = r.byLocation[loc];
+      return '<tr><td>' + esc(loc) + '</td><td>' + d.quantity + '</td><td>' + fmtVnd(d.value) + '</td></tr>';
+    }).join("");
+
+    const low = r.lowStock || [];
+    document.getElementById("r-lowstock").innerHTML = low.length
+      ? '<table class="tbl"><thead><tr><th>Linh kiện</th><th>Kho</th><th>Tồn hiện tại</th><th>Tồn tối thiểu</th></tr></thead><tbody>' +
+        low.map(it => '<tr><td>' + esc(it.itemName) + '</td><td>' + esc(it.location) + '</td><td><span class="badge badge-red">' + it.quantity + '</span></td><td>' + it.minStock + '</td></tr>').join("") +
+        '</tbody></table>'
+      : '<div class="empty"><span class="empty-icon">✅</span>Không có linh kiện nào dưới mức tồn tối thiểu</div>';
+
+    const overdue = r.overdueLoans || [];
+    document.getElementById("r-overdue").innerHTML = overdue.length
+      ? '<table class="tbl"><thead><tr><th>Linh kiện</th><th>Người mượn</th><th>Hẹn trả</th></tr></thead><tbody>' +
+        overdue.map(t => '<tr><td>' + esc(t.itemName) + '</td><td>' + esc(t.personReceive) + '</td><td><span class="badge badge-amber">' + esc(t.dueDate) + '</span></td></tr>').join("") +
+        '</tbody></table>'
+      : '<div class="empty"><span class="empty-icon">✅</span>Không có phiếu mượn nào quá hạn</div>';
+  } catch (e) { showToast("Lỗi kết nối: " + e.message, "error"); }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function today() { return new Date().toISOString().slice(0, 10); }
+function fmtVnd(n) { return Math.round(n || 0).toLocaleString("vi-VN") + " đ"; }
+function esc(s) { return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function toB64(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+function showToast(msg, type) {
+  clearTimeout(toastTimer);
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + (type || "success");
+  toastTimer = setTimeout(() => { t.className = "toast hide"; }, 3500);
+}
+</script>
+</body>
+</html>
