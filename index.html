@@ -43,7 +43,15 @@ table.tbl td { padding: 8px; border-bottom: 1px solid #f2f2f2; vertical-align: m
 table.tbl tr.clickable { cursor: pointer; }
 table.tbl tr.clickable:hover { background: #f9fafb; }
 .thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; }
-.thumb-ph { width: 36px; height: 36px; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.thumb-ph { width: 36px; height: 36px; border-radius: 6px; border: 1px solid #e8e8e8; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: zoom-in; }
+.thumb-ph:hover { background: #eee; }
+.input-error { border-color: #E24B4A !important; box-shadow: 0 0 0 1px #E24B4A; }
+.dropzone.input-error { border-color: #E24B4A; background: #FCEBEB; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 8px; }
+.lb-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.15); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+.lb-empty { color: #fff; font-size: 14px; }
 .hint { font-size: 11px; color: #aaa; margin: -8px 0 12px; }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
 .badge-gray  { background: #f0f0f0; color: #666; }
@@ -156,7 +164,7 @@ a { color: #1D9E75; }
       </div>
       <div class="row2">
         <div><label class="lbl">Vị trí kho</label>
-          <select id="in-location"></select>
+          <select id="in-location"><option value="">-- Chọn vị trí kho --</option></select>
         </div>
         <div><label class="lbl">Tình trạng</label>
           <select id="in-status"></select>
@@ -227,7 +235,7 @@ a { color: #1D9E75; }
     <div class="modal-sub" id="em-sub"></div>
     <div class="field">
       <label class="lbl">Loại giao dịch</label>
-      <select id="em-type"><option>Xuất kho</option><option>Cho mượn</option></select>
+      <select id="em-type" onchange="document.getElementById('em-personrecv').classList.remove('input-error')"><option>Xuất kho</option><option>Cho mượn</option></select>
     </div>
     <div class="field">
       <label class="lbl">Số lượng xuất *</label>
@@ -253,6 +261,12 @@ a { color: #1D9E75; }
   </div>
 </div>
 
+<div class="lightbox" id="img-lightbox">
+  <button class="lb-close" onclick="closeImgLightbox()">✕</button>
+  <img id="lb-img" src="" alt="" style="display:none">
+  <div class="lb-empty" id="lb-empty" style="display:none">Linh kiện này chưa có ảnh</div>
+</div>
+
 <div id="toast" class="toast hide"></div>
 
 <script>
@@ -270,7 +284,7 @@ let selectedItem = null;
 window.onload = function() {
   const saved = localStorage.getItem(LS_KEY);
   fillSelect("in-category", CATEGORIES);
-  fillSelect("in-location", LOCATIONS);
+  fillSelect("in-location", LOCATIONS, true);
   fillSelect("in-status", STATUSES);
   fillSelect("x-location", LOCATIONS, true);
   document.getElementById("in-date").value = today();
@@ -345,17 +359,30 @@ function onInFile(file) {
   if (!file) return;
   toB64(file).then(d => {
     inImageData = d;
+    document.getElementById("in-dropzone").classList.remove("input-error");
     document.getElementById("in-preview").innerHTML =
       '<div class="prev-wrap"><img src="' + d + '"><button class="prev-rm" onclick="inImageData=\'\';document.getElementById(\'in-preview\').innerHTML=\'\'">✕</button></div>';
   });
 }
 
 async function submitIn() {
-  const name = document.getElementById("in-name").value.trim();
-  const qty = document.getElementById("in-qty").value;
-  if (!name) { showToast("Vui lòng nhập tên linh kiện", "error"); return; }
-  if (qty === "" || Number(qty) < 0) { showToast("Vui lòng nhập số lượng hợp lệ", "error"); return; }
+  const nameEl  = document.getElementById("in-name");
+  const qtyEl   = document.getElementById("in-qty");
+  const priceEl = document.getElementById("in-price");
+  const locEl   = document.getElementById("in-location");
+  const dropzoneEl = document.getElementById("in-dropzone");
+  [nameEl, qtyEl, priceEl, locEl, dropzoneEl].forEach(el => el.classList.remove("input-error"));
 
+  const missing = [];
+  if (!nameEl.value.trim())              { missing.push("Tên linh kiện"); nameEl.classList.add("input-error"); }
+  if (qtyEl.value === "" || Number(qtyEl.value) < 0) { missing.push("Số lượng"); qtyEl.classList.add("input-error"); }
+  if (priceEl.value === "")              { missing.push("Giá"); priceEl.classList.add("input-error"); }
+  if (!locEl.value)                      { missing.push("Vị trí kho"); locEl.classList.add("input-error"); }
+  if (!inImageData)                      { missing.push("Hình ảnh"); dropzoneEl.classList.add("input-error"); }
+  if (missing.length) { showToast("⚠️ Thiếu dữ liệu bắt buộc: " + missing.join(", "), "error"); return; }
+
+  const name = nameEl.value.trim();
+  const qty = qtyEl.value;
   const btn = document.getElementById("in-submit");
   btn.disabled = true; btn.textContent = "Đang lưu...";
   try {
@@ -366,21 +393,21 @@ async function submitIn() {
       quantity: qty,
       model: document.getElementById("in-model").value.trim(),
       category: document.getElementById("in-category").value,
-      price: document.getElementById("in-price").value || 0,
+      price: priceEl.value,
       dateIn: document.getElementById("in-date").value,
       personIn: document.getElementById("in-person").value.trim(),
-      location: document.getElementById("in-location").value,
+      location: locEl.value,
       status: document.getElementById("in-status").value,
       minStock: document.getElementById("in-minstock").value || 0
     });
     if (r.ok) {
       showToast("✅ Đã nhập kho: " + name);
-      document.getElementById("in-name").value = "";
+      nameEl.value = ""; priceEl.value = "";
       document.getElementById("in-model").value = "";
-      document.getElementById("in-qty").value = "";
-      document.getElementById("in-price").value = "";
+      qtyEl.value = "";
       document.getElementById("in-person").value = "";
       document.getElementById("in-minstock").value = "";
+      locEl.value = "";
       inImageData = ""; document.getElementById("in-preview").innerHTML = "";
     } else {
       showToast("Lỗi: " + (r.error || "không xác định"), "error");
@@ -409,7 +436,7 @@ function renderResults(items) {
   items.forEach((it, i) => {
     const low = it.quantity < it.minStock;
     html += '<tr class="clickable" onclick=\'openExportModal(' + i + ')\'>' +
-      '<td><div class="thumb-ph">📦</div></td>' +
+      '<td><div class="thumb-ph" onclick=\'event.stopPropagation();viewItemImage("' + it.id + '")\'>📦</div></td>' +
       '<td>' + esc(it.itemName) + '</td>' +
       '<td>' + esc(it.model) + '</td>' +
       '<td>' + it.quantity + (low ? ' <span class="badge badge-red">Thấp</span>' : '') + '</td>' +
@@ -433,9 +460,25 @@ function openExportModal(i) {
   document.getElementById("em-dateout").value = today();
   document.getElementById("em-duedate").value = "";
   emImageData = ""; document.getElementById("em-preview").innerHTML = "";
+  ["em-qty", "em-personrecv"].forEach(id => document.getElementById(id).classList.remove("input-error"));
   document.getElementById("export-modal").classList.add("open");
 }
 function closeExportModal() { document.getElementById("export-modal").classList.remove("open"); }
+
+// ── Xem ảnh linh kiện (lightbox) ─────────────────────────────────────────
+async function viewItemImage(id) {
+  const box = document.getElementById("img-lightbox");
+  const img = document.getElementById("lb-img");
+  const empty = document.getElementById("lb-empty");
+  img.style.display = "none"; empty.style.display = "none"; img.src = "";
+  box.classList.add("open");
+  try {
+    const r = await apiGet({ action: "getItemImage", id: id });
+    if (r.ok && r.image) { img.src = r.image; img.style.display = "block"; }
+    else { empty.style.display = "block"; }
+  } catch (e) { empty.textContent = "Lỗi tải ảnh: " + e.message; empty.style.display = "block"; }
+}
+function closeImgLightbox() { document.getElementById("img-lightbox").classList.remove("open"); }
 
 function onEmFile(file) {
   if (!file) return;
@@ -448,9 +491,18 @@ function onEmFile(file) {
 
 async function submitExport() {
   if (!selectedItem) return;
-  const qty = document.getElementById("em-qty").value;
-  if (!qty || Number(qty) <= 0) { showToast("Vui lòng nhập số lượng xuất", "error"); return; }
-  if (Number(qty) > selectedItem.quantity) { showToast("Số lượng vượt quá tồn kho hiện có", "error"); return; }
+  const qtyEl = document.getElementById("em-qty");
+  const recvEl = document.getElementById("em-personrecv");
+  const type = document.getElementById("em-type").value;
+  qtyEl.classList.remove("input-error");
+  recvEl.classList.remove("input-error");
+
+  const missing = [];
+  const qty = qtyEl.value;
+  if (!qty || Number(qty) <= 0) { missing.push("Số lượng"); qtyEl.classList.add("input-error"); }
+  else if (Number(qty) > selectedItem.quantity) { showToast("Số lượng vượt quá tồn kho hiện có", "error"); qtyEl.classList.add("input-error"); return; }
+  if (type === "Cho mượn" && !recvEl.value.trim()) { missing.push("Người nhận"); recvEl.classList.add("input-error"); }
+  if (missing.length) { showToast("⚠️ Thiếu dữ liệu bắt buộc: " + missing.join(", "), "error"); return; }
 
   const btn = document.getElementById("em-submit");
   btn.disabled = true; btn.textContent = "Đang xử lý...";
@@ -459,9 +511,9 @@ async function submitExport() {
       action: "exportItem",
       itemId: selectedItem.id,
       quantity: qty,
-      type: document.getElementById("em-type").value,
+      type: type,
       personOut: document.getElementById("em-personout").value.trim(),
-      personReceive: document.getElementById("em-personrecv").value.trim(),
+      personReceive: recvEl.value.trim(),
       image: emImageData,
       dateOut: document.getElementById("em-dateout").value,
       dueDate: document.getElementById("em-duedate").value
